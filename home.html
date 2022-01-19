@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link rel="stylesheet" href="style.css">
+  <script src="/home.js"></script>
+
+</head>
+
+<body style="background-color:#AFB8B3;">
+  <script>
+  </script>
+  <div id="insert">
+
+  </div>
+
+  <div class="topnav">
+    <button type="button">Logout</button>
+  </div>
+
+
+  <form action="/createLobby" id="create" method="post">
+    <button id="createRoomBtn" onclick="createLobby()" style="margin-left: 45%">Create Lobby!</button>
+  </form>
+  <br>
+  <br>
+  <br>
+  <br>
+  <br>
+  <form action="/upload_picture" id="picture" method="post" enctype="multipart/form-data">
+    <label style="margin-left: 10%" id="uploadPicLabel">Upload profile pic:</label> <br>
+    <input style="margin-left: 10%" id="uploadPic" type="file" name="profile_pic">
+    <input style="margin-left: 10%" type="hidden" id="userID" name="userID"> <br>
+    <input style="margin-left: 10%" id="uploadPicSubmit" type="submit" onclick="submitForm()">
+  </form>
+  <h1 style="margin-left:90%; font-size: 15px; transform: translateY(-400%);">Connected Users:</h1>
+  <ul style="margin-left: 90%" id="active-users">
+    <li>TestUser</li>
+    <li>TestUser</li>
+    <li>TestUser</li>
+  </ul>
+
+  <br>
+  <br>
+  <br>
+
+
+  <form action="/joinLobby" id="join" method="post" enctype="multipart/form-data">
+    <label style="margin-left: 45%" id="inputLobbyId">Input ID to join a game:</label><br>
+    <input style="margin-left: 45%" type="text" name="LobbyID"><br>
+    <input style="margin-left: 45%" type="submit" id="submitLobbyId">
+  </form>
+
+
+</body>
+
+</html>

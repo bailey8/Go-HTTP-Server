@@ -1,0 +1,192 @@
+<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;padding: 0;margin: auto; display: block;"></canvas>
+
+<div id="player-box" style="width:500px;height:100px;padding: 0;margin: auto; display: block;">
+    <div id="players">
+    </div>
+</div>
+
+<script>
+    term = '?lobbyId=';
+    index = window.location.href.indexOf(term)
+    qs = window.location.href.substring(index)
+    const socket = new WebSocket('ws://' + window.location.host + '/ws_game' + qs);
+    var chatText = document.getElementById('chat-text');
+    var chatInput = document.getElementById('chat-input');
+    var chatForm = document.getElementById('chat-form');
+    var ctx = document.getElementById("ctx").getContext("2d");
+    var playersDiv = document.getElementById('players')
+    var players = document.getElementById('players').children
+    var flip = 0;
+    ctx.textBaseline = 'top'
+    ctx.font = '30px Arial';
+    var declareWinner = false;
+
+    var pressedW =     false;
+    var pressedA =     false;
+    var pressedS =     false;
+    var pressedD =     false;
+    var pressedClick = false;
+
+    socket.onmessage = addMessage;
+    socket.onerror = handleErr;
+
+    const activeUsers = new WebSocket('ws://' + window.location.host + '/websocket/active_users');
+    activeUsers.onmessage = addMessage2;
+
+    function addMessage2(message) {
+        const chatMessage = JSON.parse(message.data);
+        switch (chatMessage.Action) {
+            case 'displayUnicast':
+            if (chatMessage.Alert === false ) {
+            return
+           }
+            if (chatMessage.Alert === true ) {
+               display = chatMessage.Sender + ' sent you a message:\n'+ chatMessage.ChatMsg
+               alert(display);
+           }
+           user = chatMessage.Sender;
+           msg = window.prompt("Send message to ", user);
+            if (msg === null || msg.trim() === "") {
+                return
+            }
+            activeUsers.send(JSON.stringify({'Action': 'unicastMsg', 'ChatMsg': msg, 'Receiver': user}));
+            break;
+           break;
+        }
+    }
+
+    function handleErr(event) {
+        alert("Lobby either does not exist or is full. Please go the homepage and make a new one")
+    }
+
+    function addMessage(message) {
+        const chatMessage = JSON.parse(message.data);
+        switch (chatMessage.Action) {
+            case 'newPositions':
+                let users = new Map()
+                ctx.clearRect(0,0,500,500);
+                for(var i = 0 ; i < chatMessage.PList.length; i++) {
+                    users.set(chatMessage.PList[i].Number);
+                    num = chatMessage.PList[i].Number;
+                    x = chatMessage.PList[i].X;
+                    y = chatMessage.PList[i].Y;
+                    ctx.fillText(num, x, y);
+                    //update player's health
+                    p = chatMessage.PList[i]
+                    if (players[p.Number] === undefined) {
+                        var innerDiv = document.createElement('div');
+                        innerDiv.innerHTML = `<div style="float: ` + ((flip == 0) ? 'left">' : 'right">') + 
+                                                   p.Number + ` <br>
+                                                    Health:
+                                                    <div id="`+p.Number+`Health"> ` +
+                                                        p.Health + `
+                                                    </div>
+                                                </div>`; 
+                        innerDiv.id = p.Number;
+                        playersDiv.append(innerDiv);
+                        flip = (flip == 0) ? 1 : 0;
+                    }
+                    if (p.Health === 0 && !declareWinner) {
+                        alert(p.Number +' has lost!')
+                        window.location.href = '/';
+                        declareWinner = true;
+                    }
+                    pHealth = document.getElementById(p.Number+'Health');
+                    pHealth.innerHTML = p.Health;
+                } 
+                //cleanup divs in case user left
+                if (players.length > chatMessage.PList.length) {
+                    for ([username, value] of Object.entries(players)) {
+                        if (users.has(username) === false) {
+                            user = document.getElementById(players[username].id);
+                            user.parentNode.removeChild(user);
+                        }
+                    }
+                }
+                for(var i = 0 ; i < chatMessage.BList.length; i++) {
+                    x = chatMessage.BList[i].X;
+                    y = chatMessage.BList[i].Y;
+                    ctx.fillRect(x-5, y-5,10,10);
+                }
+                    break;
+            case 'addToChat':
+                chatText.innerHTML += '<div>' + chatMessage.Data + '</div>';
+                break;
+            case 'evalAnswer':
+                console.log(data);
+                break;
+        }
+     }
+  /*  chatForm.onsubmit = function(e){
+        e.preventDefault();
+        if(chatInput.value[0] === '/')  
+            socket.send(JSON.stringify({'Action': 'evalServer' , InputId: chatInput.value.slice(1)})); 
+        else
+            socket.send(JSON.stringify({'Action': 'sendMsgToServer' , InputId: chatInput.value}));
+        chatInput.value = '';
+    } */
+
+    document.onkeydown = function(event){
+        if(event.keyCode === 68 && !pressedD){	//d
+            console.log("d up")
+            pressedD = true
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'right',State:true})); 
+        }
+        else if(event.keyCode === 83 && !pressedS){	//s
+            console.log("s up")
+            pressedS = true
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'down',State:true})); 
+        }
+        else if(event.keyCode === 65 && !pressedA){ //a
+            console.log("a up")
+            pressedA = true
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'left',State:true})); 
+        }
+        else if(event.keyCode === 87 && !pressedW){ // w
+            console.log("w up")
+            pressedW = true
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'up',State:true})); 
+        }
+
+    }
+    document.onkeyup = function(event){
+        if(event.keyCode === 68 && pressedD){	//d
+            pressedD = false
+            console.log("caught d")
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'right', State:false})); 
+        }
+        else if(event.keyCode === 83 && pressedS){	//s
+            console.log("caught s")
+            pressedS = false
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'down',  State:false})); 
+        }
+        else if(event.keyCode === 65 && pressedA){ //a
+            console.log("caught a")
+            pressedA = false
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'left',  State:false})); 
+        }
+        else if(event.keyCode === 87 && pressedW){ // w
+            console.log("caught w")
+            pressedW = false
+            socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'up',   State:false})); 
+        }
+    }
+
+    document.onmousedown = function(event){
+        var x = -250 + event.clientX - 8;
+        var y = -250 + event.clientY - 8;
+        var angle = Math.atan2(y,x) / Math.PI * 180;
+        socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'attack', State: true, Angle:angle})); 
+        //socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'attack',State:true})); 
+    }
+    document.onmouseup = function(event){
+        socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'attack',State:false})); 
+    }
+    document.onmousemove = function(event){
+       /* var x = -250 + event.clientX - 8;
+        var y = -250 + event.clientY - 8;
+        var angle = Math.atan2(y,x) / Math.PI * 180;
+        socket.send(JSON.stringify({'Action': 'keyPress' , InputId:'mouseAngle',Angle:angle})); 
+        */
+    }
+</script>
